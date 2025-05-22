@@ -1,0 +1,9 @@
+# virtual-env
+.venv/
+# bytecode & cache
+__pycache__/
+*.py[cod]
+# data artefacts
+data/
+# dotenv
+.env
