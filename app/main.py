@@ -59,6 +59,15 @@ st.markdown(
 for k in ["brands_all_selected", "cat_all_selected", "reset"]:
     if k not in st.session_state:
         st.session_state[k] = False
+        
+if "fuzzy_threshold" not in st.session_state:
+    st.session_state["fuzzy_threshold"] = 85
+
+# Handle fuzzy threshold reset at the very top!
+if st.session_state.get("reset_fuzzy", False):
+    st.session_state["fuzzy_threshold"] = 85
+    st.session_state["reset_fuzzy"] = False
+        
 
 # --- SIDEBAR LAYOUT ---
 with st.sidebar:
@@ -84,7 +93,12 @@ if not uploaded:
 with st.sidebar:
     st.markdown('<div class="sidebar-section-title">2️⃣ Matching Settings</div>', unsafe_allow_html=True)
     st.markdown('<div class="sidebar-subtle-section">', unsafe_allow_html=True)
-    fuzzy_threshold = st.slider("Fuzzy match threshold (%)", 70, 100, 85)
+    fuzzy_threshold = st.slider(
+        "Fuzzy match threshold (%)",
+        70, 100, 
+        st.session_state.get("fuzzy_threshold", 85),
+        key="fuzzy_threshold"
+    )
     st.markdown('</div>', unsafe_allow_html=True)
     st.markdown('<div class="sidebar-section-div"></div>', unsafe_allow_html=True)
 
@@ -117,7 +131,8 @@ if reset_clicked:
             del st.session_state[key]
     st.session_state['brands_all_selected'] = False
     st.session_state['cat_all_selected'] = False
-    st.experimental_rerun()
+    st.session_state["reset_fuzzy"] = True  # Set a flag
+    st.rerun()
 
 # --- Brands Section ---
 with st.sidebar:
