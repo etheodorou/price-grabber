@@ -1,0 +1,7 @@
+
+- Make it the sidebar more visually appealing when shrinking the width.
+
+- After scrapper runs, replace preview with final file, and have ability to export file. Have a search bar that allows you to search by for products. Table should have filters as well. Can also show other important data that can help with the commercial operation of the store.
+
+
+-In this case, All the categories and not aligned vertically with the elements like the enable button and the question mark. On the right I have the horizontal block that they are part of highlighted, maybe we can center them vertically in that blow to solve that proble. 

@@ -135,7 +135,6 @@ df = df.rename(columns=column_map)
 
 # === [07] RESET LOGIC (Safe for Streamlit) ===
 if reset_clicked:
-    # Remove all relevant session state keys
     for key in list(st.session_state.keys()):
         if (
             key.startswith("toggle_brand_")
@@ -148,29 +147,37 @@ if reset_clicked:
             del st.session_state[key]
     st.session_state['brands_all_selected'] = False
     st.session_state['cat_all_selected'] = False
-    # Immediately rerun, so session state is fresh on next load!
     st.rerun()
+
 # === [08] SIDEBAR: BRANDS FILTER ===
 with st.sidebar:
     st.markdown('<div class="sidebar-section-title">3️⃣ Filter Brands</div>', unsafe_allow_html=True)
     st.markdown('<div class="sidebar-subtle-section">', unsafe_allow_html=True)
     brands = sorted(df["Brand"].dropna().unique())
-    all_on = st.session_state["brands_all_selected"]
-    btn_txt = "Select All Brands" if not st.session_state["brands_all_selected"] else "Deselect All Brands"
+
+    brand_states = [st.session_state.get(f"toggle_brand_{brand}", False) for brand in brands]
+    all_brands_checked = all(brand_states) and len(brands) > 0
+
+    btn_txt = "Deselect All Brands" if all_brands_checked else "Select All Brands"
     if st.button(btn_txt, key="select_all_brands", help="Select or deselect all brands", type="secondary"):
-        # Flip the all_selected flag first
-        new_state = not st.session_state["brands_all_selected"]
+        new_state = not all_brands_checked
         for brand in brands:
             st.session_state[f"toggle_brand_{brand}"] = new_state
         st.session_state["brands_all_selected"] = new_state
         st.rerun()
-    brand_states = {}
-    for i, brand in enumerate(brands):
-        state = st.session_state.get(f"toggle_brand_{brand}", False)
-        brand_states[brand] = st.checkbox(
-            label=brand, value=state, key=f"toggle_brand_{brand}"
+
+    for brand in brands:
+        checked = st.checkbox(
+            label=f":gray[{brand}]",
+            value=st.session_state.get(f"toggle_brand_{brand}", False),
+            key=f"toggle_brand_{brand}"
         )
-    enabled_brands = {b for b, v in brand_states.items() if v}
+
+    # --- After rendering, update all_brands_selected
+    current_states = [st.session_state.get(f"toggle_brand_{brand}", False) for brand in brands]
+    st.session_state["brands_all_selected"] = all(current_states) and len(brands) > 0
+
+    enabled_brands = {b for b in brands if st.session_state.get(f"toggle_brand_{b}", False)}
     st.markdown('</div>', unsafe_allow_html=True)
     st.markdown('<div class="sidebar-section-div"></div>', unsafe_allow_html=True)
 
@@ -178,36 +185,63 @@ with st.sidebar:
 categories = (
     df[df["Brand"].isin(enabled_brands)]["Category"].dropna().unique().tolist()
 )
+
+# --- Always initialize all toggle keys up front for every category & site ---
+all_websites = ["PN", "TTP", "TW", "ET", "TP", "TPR"]
+for cat in categories:
+    if f"toggle_{cat}" not in st.session_state:
+        st.session_state[f"toggle_{cat}"] = False
+    for site in all_websites:
+        if f"{cat}_{site}_scrape" not in st.session_state:
+            st.session_state[f"{cat}_{site}_scrape"] = False
+    if f"website_select_all_{cat}" not in st.session_state:
+        st.session_state[f"website_select_all_{cat}"] = False
+
 with st.sidebar:
     st.markdown('<div class="sidebar-section-title">4️⃣ Category Scrape & Pricing</div>', unsafe_allow_html=True)
     st.markdown('<div class="sidebar-subtle-section">', unsafe_allow_html=True)
-    if categories:
-        btn_txt = "Select All Categories" if not st.session_state["cat_all_selected"] else "Deselect All Categories"
-        if st.button(btn_txt, key="select_all_categories", help="Select or deselect all categories", type="secondary"):
-            new_state = not st.session_state["cat_all_selected"]
-            for cat in categories:
-                st.session_state[f"toggle_{cat}"] = new_state
-            st.session_state["cat_all_selected"] = new_state
-            st.rerun()
-    all_websites = ["PN", "TTP", "TW", "ET", "TP", "TPR"]
+    # Categories "select all/deselect all"
+    category_states = [st.session_state.get(f"toggle_{cat}", False) for cat in categories]
+    all_categories_checked = all(category_states) and len(categories) > 0
+    btn_txt = "Deselect All Categories" if all_categories_checked else "Select All Categories"
+    if st.button(btn_txt, key="select_all_categories", help="Select or deselect all categories", type="secondary"):
+        new_state = not all_categories_checked
+        for cat in categories:
+            st.session_state[f"toggle_{cat}"] = new_state
+        st.session_state["cat_all_selected"] = new_state
+        st.rerun()
+
     strategy_options = [
         "None",
         "Match cheapest competitor",
         "Undercut cheapest by %",
         "Fixed margin above cost"
     ]
-    # --- Organize categories: enabled on top ---
+
+    # IMPORTANT: do NOT reorder categories, just iterate in original list order!
     cat_blocks = []
     for cat in categories:
         state = st.session_state.get(f"toggle_{cat}", False)
         cat_blocks.append((state, cat))
-    cat_blocks = sorted(cat_blocks, key=lambda x: not x[0])  # enabled first
+    # Don't sort cat_blocks at all! This is the fix.
+
     active_cats = [cat for enabled, cat in cat_blocks if enabled]
     inactive_cats = [cat for enabled, cat in cat_blocks if not enabled]
     cat_options = {}
     selected_sites = {}
-    for i, cat in enumerate(active_cats + inactive_cats):
-        enabled = st.session_state.get(f"toggle_{cat}", False)
+
+    # Optionally: separator logic for inactive cats
+    first_inactive_idx = None
+    for i, (enabled, _) in enumerate(cat_blocks):
+        if not enabled:
+            first_inactive_idx = i
+            break
+
+    for i, (enabled, cat) in enumerate(cat_blocks):
+        if i == first_inactive_idx:
+            st.markdown('<hr style="border:none;border-top:2px solid #444;margin:1em 0;">', unsafe_allow_html=True)
+            st.markdown('<div style="color:#bbb;font-size:1.05em;font-weight:600;text-align:center;margin-bottom:0.15em;margin-top:0.15em;">Inactive categories</div>', unsafe_allow_html=True)
+
         toggle_row = st.columns([0.13, 0.87])
         with toggle_row[0]:
             st.toggle(
@@ -218,9 +252,9 @@ with st.sidebar:
             )
         with toggle_row[1]:
             st.markdown(f"**{cat}**")
+
         if enabled:
-        # --- FLEXIBLE PRICE BANDS UI (compact, centered, aligned) ---
-        # Get the max retail value for the current category
+            # --- FLEXIBLE PRICE BANDS UI (compact, centered, aligned) ---
             cat_df = df[df["Category"] == cat]
             if not cat_df.empty and "Retail" in cat_df.columns:
                 cat_min = float(cat_df["Retail"].min())
@@ -266,7 +300,6 @@ with st.sidebar:
             </style>
             """, unsafe_allow_html=True)
 
-            # Header row (titles above cells)
             st.markdown("""
             <div class="band-header">
                 <div class="band-min">Min</div>
@@ -286,7 +319,6 @@ with st.sidebar:
 
             to_delete = None
             for idx, band in enumerate(bands):
-                # Use Streamlit columns only (NO extra markdown DIV here, fixes gray box)
                 col1, col2, col3, col4, col5 = st.columns([0.91, 0.91, 1.25, 0.81, 0.4], gap="small")
                 with col1:
                     band['min'] = st.number_input(
@@ -323,10 +355,6 @@ with st.sidebar:
                 st.session_state[bands_key].append({'min': cat_min, 'max': cat_max, 'strategy': strategy_options[0], 'margin': 20.0})
                 st.rerun()
             st.markdown('</div>', unsafe_allow_html=True)
-            # --- END FLEXIBLE PRICE BANDS UI ---
-
-
-            # --- [Next section: Websites & category logic] ---
 
             # === [11] WEBSITES & CATEGORY LOGIC (CONTINUES) ===
             st.markdown("<div class='website-label'>Websites to scrape:</div>", unsafe_allow_html=True)
@@ -340,18 +368,20 @@ with st.sidebar:
                 "TPR": "Tennispro"
             }
 
-            # -- Fixed select/deselect all websites logic:
-            btn_txt = f"Select All Websites ({cat})" if not st.session_state.get(f"website_select_all_{cat}", False) else f"Deselect All Websites ({cat})"
+            website_states = [st.session_state.get(f"{cat}_{site}_scrape", False) for site in all_websites]
+            all_checked = all(website_states) and len(all_websites) > 0
+
+            btn_txt = f"Deselect All Websites ({cat})" if all_checked else f"Select All Websites ({cat})"
             if st.button(btn_txt, key=f"select_all_websites_{cat}", type="secondary"):
-                new_state = not st.session_state.get(f"website_select_all_{cat}", False)
+                new_state = not all_checked
                 for site in all_websites:
                     st.session_state[f"{cat}_{site}_scrape"] = new_state
                 st.session_state[f"website_select_all_{cat}"] = new_state
                 st.rerun()
 
+            # Vertical checkboxes with abbreviation and tooltip
             cat_selected_sites = []
             for site in all_websites:
-                # Single vertical column: checkbox + abbreviation (with tooltip)
                 checked = st.checkbox(
                     label=f":gray[{site}]",
                     value=st.session_state.get(f"{cat}_{site}_scrape", False),
@@ -361,11 +391,25 @@ with st.sidebar:
                 if checked:
                     cat_selected_sites.append(site)
 
+            # Update "select all websites" state variable for live button label
+            if all(st.session_state.get(f"{cat}_{site}_scrape", False) for site in all_websites):
+                st.session_state[f"website_select_all_{cat}"] = True
+            else:
+                st.session_state[f"website_select_all_{cat}"] = False
+
             selected_sites[cat] = cat_selected_sites
             cat_options[cat] = {
                 "scrape": True,
                 "bands": st.session_state[bands_key],  # <- store bands here!
             }
+        else:
+            cat_options[cat] = {
+                "scrape": False,
+                "bands": [],
+            }
+            selected_sites[cat] = []
+    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-section-div"></div>', unsafe_allow_html=True)
 
     # === [12] READY TO RUN BUTTON ===
     requirements_met = (
