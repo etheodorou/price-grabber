@@ -4,4 +4,19 @@
 - After scrapper runs, replace preview with final file, and have ability to export file. Have a search bar that allows you to search by for products. Table should have filters as well. Can also show other important data that can help with the commercial operation of the store.
 
 
--In this case, All the categories and not aligned vertically with the elements like the enable button and the question mark. On the right I have the horizontal block that they are part of highlighted, maybe we can center them vertically in that blow to solve that proble. 
+-In this case, All the categories and not aligned vertically with the elements like the enable button and the question mark. On the right I have the horizontal block that they are part of highlighted, maybe we can center them vertically in that blow to solve that problem. 
+
+----------------------------------------
+
+1. Remove format from everything so I can format in excel. So no '€' or '%' signs so that i can manipulate the format as i want, it might also help with the fuzzy . 
+
+2. Can we code it so that a new column is added next to the product url with the hyperlinks of the product url renamed to something small to not take up space. 
+
+3. Please provide the full code with this implemented, no placeholders please i want full code. 
+
+4. I will open the file 'From Text/CSV' which opened the data correctly. 
+
+5. The picture url is correct now but please also make a new column with a shortened hyperlinks of these urls. 
+
+
+
