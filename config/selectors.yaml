@@ -1,0 +1,8 @@
+PadelNuestro:
+  racket_category:
+    name: "strong.product.name.product-item-name"
+    badge: "span.product-label__outstock, span.product-label__exclusive"
+    discount: "span.product-label__percent"
+    price: "span.price"
+    old_price: "span.old-price span.price"
+    product_url: "a.product-item-link"
