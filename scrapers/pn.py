@@ -1,8 +1,9 @@
 import requests
 from bs4 import BeautifulSoup
-import csv
+import pandas as pd
 import re
 from core.selectors import load_selectors
+from core.brands_urls import PADEL_NUESTRO_RACKETS_BRANDS
 
 def clean_price(price_str):
     if price_str is None:
@@ -10,12 +11,14 @@ def clean_price(price_str):
     price = re.findall(r"\d+[.,]?\d*", price_str.replace(",", "."))
     return price[0] if price else ""
 
-def scrape_pn_adidas_rackets():
-    # Load selectors from YAML config
-    selectors = load_selectors("PadelNuestro", "racket_category")
-    base_url = "https://www.padelnuestro.com"
-    category_url = f"{base_url}/int/padel-rackets/adidas"
+def scrape_pn(brand, url):
+    # Generate selector key from brand & category slug
+    slug = url.rstrip('/').split('/')[-1]
+    category = url.rstrip('/').split('/')[-2]
+    selectors = load_selectors("PadelNuestro", category)
+
     products = []
+    category_url = url
     session = requests.Session()
 
     while category_url:
@@ -24,34 +27,50 @@ def scrape_pn_adidas_rackets():
         soup = BeautifulSoup(r.text, "html.parser")
         cards = soup.select("li.item.product.product-item")
         for card in cards:
-            # Use config selectors
-            name = card.select_one(selectors["name"])
-            name = name.get_text(strip=True) if name else ""
+            name_tag = card.select_one(selectors["name"])
+            name = name_tag.get_text(strip=True) if name_tag else ""
 
             badge = ""
             badge_tag = card.select_one(selectors["badge"])
             if badge_tag:
                 badge = badge_tag.get_text(strip=True)
 
-            discount = ""
-            discount_tag = card.select_one(selectors["discount"])
-            if discount_tag:
-                discount = clean_price(discount_tag.get_text(strip=True))
+            old_price = ""
+            old_price_tag = card.select_one(selectors["old_price"])
+            if old_price_tag:
+                old_price = clean_price(old_price_tag.get_text(strip=True))
             else:
-                discount = "0"
+                old_price = ""
 
             price = ""
             price_tag = card.select_one(selectors["price"])
             if price_tag:
                 price = clean_price(price_tag.get_text(strip=True))
 
-            old_price = ""
-            old_price_tag = card.select_one(selectors["old_price"])
-            if old_price_tag:
-                old_price = clean_price(old_price_tag.get_text(strip=True))
-
             url_tag = card.select_one(selectors["product_url"])
             product_url = url_tag["href"] if url_tag and url_tag.has_attr("href") else ""
+
+            # Discount: Calculate from prices if possible, else fallback to badge
+            discount = "0"
+            try:
+                old_price_val = float(old_price.replace(",", "."))
+                price_val = float(price.replace(",", "."))
+                if old_price_val > 0 and price_val < old_price_val:
+                    discount = str(round(100 * (old_price_val - price_val) / old_price_val))
+                else:
+                    discount_tag = card.select_one(selectors["discount"])
+                    if discount_tag:
+                        badge_val = re.findall(r"\d+", discount_tag.get_text(strip=True))
+                        discount = badge_val[0] if badge_val else "0"
+                    else:
+                        discount = "0"
+            except Exception:
+                discount_tag = card.select_one(selectors["discount"])
+                if discount_tag:
+                    badge_val = re.findall(r"\d+", discount_tag.get_text(strip=True))
+                    discount = badge_val[0] if badge_val else "0"
+                else:
+                    discount = "0"
 
             products.append({
                 "name": name,
@@ -69,12 +88,14 @@ def scrape_pn_adidas_rackets():
         else:
             category_url = None
 
-    # Write CSV (no image_url)
-    with open("padelnuestro_adidas_rackets.csv", "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=["name", "badge", "discount", "price", "old_price", "product_url"])
-        writer.writeheader()
-        for p in products:
-            writer.writerow(p)
+    return pd.DataFrame(products)
 
+# For quick batch test:
 if __name__ == "__main__":
-    scrape_pn_adidas_rackets()
+    all_dfs = []
+    for brand, url in PADEL_NUESTRO_RACKETS_BRANDS.items():
+        df = scrape_pn(brand, url)
+        all_dfs.append(df)
+    final_df = pd.concat(all_dfs, ignore_index=True)
+    final_df.to_csv("all_padelnuestro_rackets.csv", index=False)
+    print(final_df.head())

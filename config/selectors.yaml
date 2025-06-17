@@ -1,5 +1,5 @@
 PadelNuestro:
-  racket_category:
+  padel-rackets:
     name: "strong.product.name.product-item-name"
     badge: "span.product-label__outstock, span.product-label__exclusive"
     discount: "span.product-label__percent"
