@@ -6,3 +6,27 @@ PadelNuestro:
     price: "span.price"
     old_price: "span.old-price span.price"
     product_url: "a.product-item-link"
+  padel-bags:
+    name: "strong.product.name.product-item-name"
+    badge: "span.product-label__outstock, span.product-label__exclusive"
+    discount: "span.product-label__percent"
+    price: "span.price"
+    old_price: "span.old-price span.price"
+    product_url: "a.product-item-link"
+  padel-shoes:
+    name: "strong.product.name.product-item-name"
+    badge: "span.product-label__outstock, span.product-label__exclusive"
+    discount: "span.product-label__percent"
+    price: "span.price-wrapper[data-price-type='finalPrice'] span.price"
+    old_price: "span.price-wrapper[data-price-type='oldPrice'] span.price"
+    product_url: "a.product-item-link"
+
+TennisWarehouse:
+  tennis-racquets:
+    name: ".cattable-wrap-cell-info-name"
+    badge: ".cattable-wrap-cell-info-flag"
+    discount: ".cattable-wrap-cell-info-flag"
+    price: ".cattable-wrap-cell-info-price > span:not(.cattable-wrap-cell-info-price-msrp)"
+    old_price: ".cattable-wrap-cell-info-price-msrp .is-crossout"
+    product_url: ".cattable-wrap-cell-info"
+
